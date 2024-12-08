@@ -242,17 +242,21 @@ def build_single_salient_model(params):
 
 def build_two_stream_salient_model(params):
     """构建双流显著性模型"""
-    eeg_input = layers.Input(shape=(20, 3000, 1), name='EEG_input')
-    eog_input = layers.Input(shape=(20, 3000, 1), name='EOG_input')
+    # 修改输入层形状以匹配数据
+    eeg_input = layers.Input(shape=(20, 3000, 1),  # (sequence_length, time_points, channels)
+                            name='EEG_input')
+    eog_input = layers.Input(shape=(20, 3000, 1),
+                            name='EOG_input')
     
-    pooling_sizes = [2, 2, 2, 2]
+    # 修改池化大小
+    pooling_sizes = [2, 2, 2, 2]  # 使用更小的池化尺寸
     
     # EEG 流
     eeg_stream = build_branch(
         eeg_input, 
         filters=params['train']['filters'],
         kernel_size=params['train']['kernel_size'],
-        pooling_sizes=pooling_sizes,
+        pooling_sizes=pooling_sizes,  # 使用修改后的池化尺寸
         dilation_sizes=params['train']['dilation_sizes'],
         activation=params['train']['activation'],
         u_depths=params['train']['u_depths'],
@@ -267,7 +271,7 @@ def build_two_stream_salient_model(params):
         eog_input,
         filters=params['train']['filters'],
         kernel_size=params['train']['kernel_size'],
-        pooling_sizes=pooling_sizes,
+        pooling_sizes=pooling_sizes,  # 使用修改后的池化尺寸
         dilation_sizes=params['train']['dilation_sizes'],
         activation=params['train']['activation'],
         u_depths=params['train']['u_depths'],
@@ -277,12 +281,8 @@ def build_two_stream_salient_model(params):
         pre_name='EOG_stream'
     )
     
-    # 添加全局平均池化层，移除时间维度
-    eeg_gap = layers.GlobalAveragePooling2D(name='eeg_global_pool')(eeg_stream)
-    eog_gap = layers.GlobalAveragePooling2D(name='eog_global_pool')(eog_stream)
-    
     # 合并两个流
-    merged = layers.concatenate([eeg_gap, eog_gap])
+    merged = layers.concatenate([eeg_stream, eog_stream])
     
     # 全连接层
     x = layers.Dense(128, activation='relu')(merged)
