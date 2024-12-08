@@ -12,16 +12,9 @@ def load_npz_file(npz_file: str) -> tuple:
     """
     print(f"Loading file: {npz_file}")
     with np.load(npz_file) as f:
-        data = f["x"]  # 形状是 (1092, 3000, 3)
-        labels = f["y"]  # 形状是 (1092,)
-        sampling_rate = f["fs"]  # 标量，值为100
-        
-        # 确保数据形状正确
-        if data.shape[1] != 3000:
-            raise ValueError(f"Expected 3000 time points, got {data.shape[1]}")
-        if data.shape[2] != 3:
-            raise ValueError(f"Expected 3 channels, got {data.shape[2]}")
-            
+        data = f["x"]
+        labels = f["y"]
+        sampling_rate = f["fs"]
     return data, labels, sampling_rate
 
 
@@ -54,7 +47,15 @@ def load_npz_files(data_dir: str) -> list:
             elif fs != sampling_rate:
                 raise ValueError(f"Sampling rate mismatch in {npz_f}")
             
-            # 直接使用原始数据形状，不添加额外维度
+            # 处理数据维度
+            tmp_data = np.squeeze(tmp_data)
+            tmp_data = tmp_data[:, :, :, np.newaxis, np.newaxis]
+            tmp_data = np.concatenate((
+                tmp_data[np.newaxis, :, :, 0, :, :],
+                tmp_data[np.newaxis, :, :, 1, :, :],
+                tmp_data[np.newaxis, :, :, 2, :, :]
+            ), axis=0)
+
             tmp_data = tmp_data.astype(np.float32)
             tmp_labels = tmp_labels.astype(np.int32)
 
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         test_dir = sys.argv[1]
     else:
-        test_dir = "./sleepedf/prepared"
+        test_dir = "./data/sleepedf/prepared"
     
     try:
         data, labels = load_npz_files(test_dir)

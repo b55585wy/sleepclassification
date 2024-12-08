@@ -7,7 +7,7 @@ def create_sequences(data: np.ndarray, labels: np.ndarray,
     将数据组织成序列
     
     Args:
-        data: 原始数据，形状 (n_samples, 3000, 1)
+        data: 原始数据，形状 (n_samples, 3000, 3)
         labels: 原始标签，形状 (n_samples,)
         sequence_length: 序列长度，默认20
     
@@ -20,8 +20,8 @@ def create_sequences(data: np.ndarray, labels: np.ndarray,
     if n_samples <= 0:
         raise ValueError(f"Data length {len(data)} is too short for sequence length {sequence_length}")
     
-    # 创建序列，保持正确的维度 (n_samples, sequence_length, 3000, 1)
-    sequences = np.zeros((n_samples, sequence_length, data.shape[1], data.shape[2]), dtype=np.float32)
+    # 创建序列，注意保持正确的维度
+    sequences = np.zeros((n_samples, sequence_length, data.shape[1]), dtype=np.float32)
     
     # 滑动窗口创建序列
     for i in range(n_samples):
@@ -54,15 +54,16 @@ def prepare_data(data_list: List[np.ndarray], labels_list: List[np.ndarray],
     for idx, (data, labels) in enumerate(zip(data_list, labels_list)):
         try:
             print(f"\nProcessing file {idx}")
-            print(f"Data shape: {data.shape}")  # 应该是 (1092, 3000, 3)
-            print(f"Labels shape: {labels.shape}")  # 应该是 (1092,)
+            print(f"Data shape: {data.shape}")
+            print(f"Labels shape: {labels.shape}")
+            print(f"Labels content: {labels}")  # 添加这行来查看标签内容
             
             # 确保数据类型正确
             data = data.astype(np.float32)
             
-            # 正确分离通道数据
-            eeg_data = data[:, :, 0:1]  # 第一个通道 (EEG) - 形状应该是 (1092, 3000, 1)
-            eog_data = data[:, :, 1:2]  # 第二个通道 (EOG) - 形状应该是 (1092, 3000, 1)
+            # 分离通道数据 - 修改索引方式
+            eeg_data = data[:, 0:1]  # 第一个通道 (EEG)
+            eog_data = data[:, 1:2]  # 第二个通道 (EOG)
             
             print(f"EEG shape after split: {eeg_data.shape}")
             print(f"EOG shape after split: {eog_data.shape}")

@@ -7,7 +7,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoa
 from load_files import load_npz_files
 from preprocess import prepare_data
 from model import TwoSteamSalientModelWrapper
-from tensorflow.keras.optimizers import Adam
+from data_generator import SleepDataGenerator
 
 def setup_logging():
     """设置日志"""
@@ -72,12 +72,12 @@ def train(args):
     
     # 加载数据
     logging.info("Loading data from %s", args.data_dir)
-    data_list, labels_list = load_npz_files(args.data_dir)
+    data_files = load_npz_files(args.data_dir)
     
     # 准备数据
     logging.info("Preparing data...")
     (train_eeg, train_eog, train_labels), (val_eeg, val_eog, val_labels) = \
-        prepare_data(data_list, labels_list, 
+        prepare_data(data_files, 
                     sequence_length=params['preprocess']['sequence_epochs'],
                     test_mode=args.test_mode)
     
@@ -94,12 +94,9 @@ def train(args):
     model_wrapper = TwoSteamSalientModelWrapper(params)
     model = model_wrapper.model
     
-    # 创建优化器
-    optimizer = Adam(learning_rate=params['train'].get('learning_rate', 0.001))
-    
     # 编译模型
     model.compile(
-        optimizer=optimizer,
+        optimizer=params['train']['optimizer'],
         loss='categorical_crossentropy',
         metrics=['accuracy']
     )
@@ -107,16 +104,31 @@ def train(args):
     # 创建回调函数
     callbacks = create_callbacks(params['model_name'])
     
+    # 创建数据生成器
+    train_generator = SleepDataGenerator(
+        data_files=data_files[:-5],  # 除了最后5个文件
+        batch_size=params['train']['batch_size'],
+        sequence_length=params['preprocess']['sequence_epochs']
+    )
+    
+    # 创建验证生成器
+    val_generator = SleepDataGenerator(
+        data_files=data_files[-5:],  # 最后5个文件
+        batch_size=params['train']['batch_size'],
+        sequence_length=params['preprocess']['sequence_epochs'],
+        shuffle=False
+    )
+    
     # 训练模型
     logging.info("Starting training...")
     try:
         history = model.fit(
-            [train_eeg, train_eog],  # 输入
-            train_labels,            # 标签
-            batch_size=params['train']['batch_size'],
+            train_generator,
+            validation_data=val_generator,
             epochs=params['train']['epochs'],
-            validation_data=([val_eeg, val_eog], val_labels),
             callbacks=callbacks,
+            workers=4,
+            use_multiprocessing=True,
             verbose=1
         )
         

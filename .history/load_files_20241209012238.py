@@ -12,15 +12,18 @@ def load_npz_file(npz_file: str) -> tuple:
     """
     print(f"Loading file: {npz_file}")
     with np.load(npz_file) as f:
-        data = f["x"]  # 形状是 (1092, 3000, 3)
-        labels = f["y"]  # 形状是 (1092,)
-        sampling_rate = f["fs"]  # 标量，值为100
+        data = f["x"]  # 原始数据形状是 (3, 3000)
+        labels = f["y"]
+        sampling_rate = f["fs"]
         
         # 确保数据形状正确
+        if data.shape[0] != 3:
+            raise ValueError(f"Expected 3 channels, got {data.shape[0]}")
         if data.shape[1] != 3000:
             raise ValueError(f"Expected 3000 time points, got {data.shape[1]}")
-        if data.shape[2] != 3:
-            raise ValueError(f"Expected 3 channels, got {data.shape[2]}")
+            
+        # 转置数据使形状变为 (3000, 3)
+        data = data.T
             
     return data, labels, sampling_rate
 

@@ -7,7 +7,7 @@ def create_sequences(data: np.ndarray, labels: np.ndarray,
     将数据组织成序列
     
     Args:
-        data: 原始数据，形状 (n_samples, 3000, 1)
+        data: 原始数据，形状 (n_samples, 3000, 3)
         labels: 原始标签，形状 (n_samples,)
         sequence_length: 序列长度，默认20
     
@@ -16,31 +16,34 @@ def create_sequences(data: np.ndarray, labels: np.ndarray,
     """
     data = data.astype(np.float32)
     
-    n_samples = len(data) - sequence_length + 1
-    if n_samples <= 0:
-        raise ValueError(f"Data length {len(data)} is too short for sequence length {sequence_length}")
+    n_samples = len(data)
+    n_sequences = n_samples - sequence_length + 1
     
-    # 创建序列，保持正确的维度 (n_samples, sequence_length, 3000, 1)
-    sequences = np.zeros((n_samples, sequence_length, data.shape[1], data.shape[2]), dtype=np.float32)
+    # 创建序列，保持原始形状 (n_sequences, sequence_length, 3000, 3)
+    sequences = np.zeros((n_sequences, sequence_length, 3000, 3), dtype=np.float32)
     
     # 滑动窗口创建序列
-    for i in range(n_samples):
+    for i in range(n_sequences):
         sequences[i] = data[i:i + sequence_length]
     
     # 处理标签 (转换为5分类的one-hot编码)
-    sequence_labels = np.zeros((n_samples, 5))  # 直接创建最终标签形状
-    for i in range(n_samples):
-        # 使用序列中间位置的标签作为该序列的标签
-        middle_idx = i + sequence_length // 2
-        label_idx = int(labels[middle_idx])
-        sequence_labels[i, label_idx] = 1
+    sequence_labels = np.zeros((n_sequences, sequence_length))
+    for i in range(n_sequences):
+        sequence_labels[i] = labels[i:i + sequence_length]
+    sequence_labels = np.eye(5)[sequence_labels.astype(int)]  # 5分类
     
     return sequences, sequence_labels
 
 def prepare_data(data_list: List[np.ndarray], labels_list: List[np.ndarray], 
-                sequence_length: int = 20, test_mode: bool = True) -> Tuple:
+                sequence_length: int = 20, test_mode: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     准备训练和验证数据
+    
+    Args:
+        data_list: 数据列表，每个元素形状 (n_samples, 3000, 3)
+        labels_list: 标签列表，每个元素形状 (n_samples,)
+        sequence_length: 序列长度，默认20
+        test_mode: 是否为测试模式，如果是则只处理少量数据
     """
     all_sequences = []
     all_labels = []
@@ -54,18 +57,16 @@ def prepare_data(data_list: List[np.ndarray], labels_list: List[np.ndarray],
     for idx, (data, labels) in enumerate(zip(data_list, labels_list)):
         try:
             print(f"\nProcessing file {idx}")
-            print(f"Data shape: {data.shape}")  # 应该是 (1092, 3000, 3)
-            print(f"Labels shape: {labels.shape}")  # 应该是 (1092,)
+            print(f"Data shape: {data.shape}")
+            print(f"Labels shape: {labels.shape}")
+            print(f"Unique labels: {np.unique(labels)}")
             
-            # 确保数据类型正确
+            # 转换为float32
             data = data.astype(np.float32)
             
-            # 正确分离通道数据
-            eeg_data = data[:, :, 0:1]  # 第一个通道 (EEG) - 形状应该是 (1092, 3000, 1)
-            eog_data = data[:, :, 1:2]  # 第二个通道 (EOG) - 形状应该是 (1092, 3000, 1)
-            
-            print(f"EEG shape after split: {eeg_data.shape}")
-            print(f"EOG shape after split: {eog_data.shape}")
+            # 分离EEG和EOG数据
+            eeg_data = data[..., :3]
+            eog_data = data[..., -3:]
             
             # 创建序列
             eeg_sequences, sequence_labels = create_sequences(eeg_data, labels, sequence_length)
