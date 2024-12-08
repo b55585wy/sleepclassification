@@ -1,0 +1,7 @@
+/sleepedf/prepared
+*.log
+*.csv
+*.txt
+*.json
+*.yml
+/sleepedf/prepared-cassette
