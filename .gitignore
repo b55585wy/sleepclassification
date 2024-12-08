@@ -6,3 +6,5 @@
 *.yml
 /sleepedf/prepared-cassette
 logs/
+.DS_Store
+.history/
