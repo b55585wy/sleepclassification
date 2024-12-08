@@ -64,28 +64,6 @@ def create_callbacks(model_name):
 
 def train(args):
     """训练模型"""
-    # 检测可用的GPU
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    if gpus:
-        try:
-            # 允许GPU内存增长，防止占用所有内存
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
-            print(f"Found {len(gpus)} GPUs: {gpus}")
-            
-            # 创建分布式策略
-            if len(gpus) > 1:
-                strategy = tf.distribute.MirroredStrategy()
-                print(f'Training using {strategy.num_replicas_in_sync} GPUs')
-            else:
-                strategy = tf.distribute.get_strategy()  # 默认策略
-                print('Training using single GPU')
-        except RuntimeError as e:
-            print(f"GPU error: {e}")
-    else:
-        strategy = tf.distribute.get_strategy()  # CPU策略
-        print('No GPUs found, using CPU')
-
     # 加载配置
     logging.info("Loading configuration from %s", args.config)
     with open(args.config, 'r', encoding='utf-8') as f:
@@ -95,42 +73,32 @@ def train(args):
     logging.info("Loading data from %s", args.data_dir)
     data_list, labels_list = load_npz_files(args.data_dir)
     
-    # 使用策略范围创建模型
-    with strategy.scope():
-        # 准备数据
-        logging.info("Preparing data...")
-        (train_eeg, train_eog, train_labels), (val_eeg, val_eog, val_labels) = \
-            prepare_data(data_list, labels_list, 
-                        sequence_length=params['preprocess']['sequence_epochs'],
-                        test_mode=args.test_mode)
-        
-        logging.info("Data shapes:")
-        logging.info(f"Train EEG: {train_eeg.shape}")
-        logging.info(f"Train EOG: {train_eog.shape}")
-        logging.info(f"Train Labels: {train_labels.shape}")
-        logging.info(f"Val EEG: {val_eeg.shape}")
-        logging.info(f"Val EOG: {val_eog.shape}")
-        logging.info(f"Val Labels: {val_labels.shape}")
-        
-        # 创建模型
-        logging.info("Creating model...")
-        model_wrapper = TwoSteamSalientModelWrapper(params)
-        model = model_wrapper.model
-        
-        # 配置优化器
-        optimizer = tf.keras.optimizers.Adam(
-            learning_rate=params['train'].get('learning_rate', 0.001)
-        )
-        
-        # 编译模型
-        model.compile(
-            optimizer=optimizer,
-            loss='categorical_crossentropy',
-            metrics=['accuracy']
-        )
+    # 准备数据
+    logging.info("Preparing data...")
+    (train_eeg, train_eog, train_labels), (val_eeg, val_eog, val_labels) = \
+        prepare_data(data_list, labels_list, 
+                    sequence_length=params['preprocess']['sequence_epochs'],
+                    test_mode=args.test_mode)
     
-    # 设置批次大小
-    batch_size = params['train']['batch_size'] * strategy.num_replicas_in_sync
+    logging.info("Data shapes:")
+    logging.info(f"Train EEG: {train_eeg.shape}")
+    logging.info(f"Train EOG: {train_eog.shape}")
+    logging.info(f"Train Labels: {train_labels.shape}")
+    logging.info(f"Val EEG: {val_eeg.shape}")
+    logging.info(f"Val EOG: {val_eog.shape}")
+    logging.info(f"Val Labels: {val_labels.shape}")
+    
+    # 创建模型
+    logging.info("Creating model...")
+    model_wrapper = TwoSteamSalientModelWrapper(params)
+    model = model_wrapper.model
+    
+    # 编译模型
+    model.compile(
+        optimizer=params['train']['optimizer'],
+        loss='categorical_crossentropy',
+        metrics=['accuracy']
+    )
     
     # 创建回调函数
     callbacks = create_callbacks(params['model_name'])
@@ -141,7 +109,7 @@ def train(args):
         history = model.fit(
             [train_eeg, train_eog],  # 输入
             train_labels,            # 标签
-            batch_size=batch_size,
+            batch_size=params['train']['batch_size'],
             epochs=params['train']['epochs'],
             validation_data=([val_eeg, val_eog], val_labels),
             callbacks=callbacks,

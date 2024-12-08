@@ -5,4 +5,4 @@
 *.json
 *.yml
 /sleepedf/prepared-cassette
-logs/
+log

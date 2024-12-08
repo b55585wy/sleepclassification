@@ -26,9 +26,4 @@ evaluation:
 class_weights: [1.0, 1.80, 1.0, 1.25, 1.20]
 patience: 5
 sleep_epoch_len: 3000
-num_classes: 5
-
-# 添加分布式训练参数
-distributed:
-  enable: true  # 是否启用分布式训练
-  strategy: "mirrored"  # 分布式策略: "mirrored" 或 "multi_worker"
+num_classes: 5 
