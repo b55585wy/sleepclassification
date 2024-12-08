@@ -155,30 +155,36 @@ def train(args):
         logging.error("Error during training: %s", str(e))
         raise
 
-def main():
-    """主函数"""
-    # 设置日志
-    setup_logging()
-    
-    # 解析命令行参数
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', type=str, default='./sleepedf/prepared',
-                      help='Directory containing the data files')
+def parse_args():
+    parser = argparse.ArgumentParser(description='Sleep Stage Classification Training')
+    parser.add_argument('--data_dir', type=str, default='data',
+                      help='数据目录路径')
     parser.add_argument('--config', type=str, default='hyperparameters.yaml',
-                      help='Path to configuration file')
+                      help='配置文件路径')
     parser.add_argument('--test_mode', action='store_true',
-                      help='Run in test mode with limited data')
+                      help='是否使用测试模式')
+    parser.add_argument('--gpus', type=str, default='0',
+                      help='指定要使用的GPU，例如 "0,1,2"')
+    
     args = parser.parse_args()
+    return args
+
+def main():
+    args = parse_args()
+    
+    # 设置可见GPU
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
+    
+    # 加载配置
+    with open(args.config, encoding='utf-8') as f:
+        params = yaml.full_load(f)
     
     try:
-        # 训练模型
         train_history = train(args)
-        logging.info("Process completed successfully!")
-        
+        print("Training completed successfully!")
     except Exception as e:
-        logging.error("Process failed: %s", str(e))
-        raise
+        logging.error(f"Process failed: {str(e)}")
+        raise e
 
 if __name__ == '__main__':
     main()
