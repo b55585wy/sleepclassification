@@ -7,19 +7,48 @@ from evaluation import evaluate_model, draw_training_plot
 from load_files import load_npz_files
 from preprocess import prepare_data
 import yaml
+from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 def load_training_history(log_dir):
     """加载TensorBoard日志中的训练历史"""
-    from tensorflow.python.summary.summary_iterator import summary_iterator
-    
     history = {'accuracy': [], 'val_accuracy': [], 'loss': [], 'val_loss': []}
     
-    for e in summary_iterator(tf.io.gfile.glob(f"{log_dir}/*")[0]):
-        for v in e.summary.value:
-            if v.tag in ['accuracy', 'val_accuracy', 'loss', 'val_loss']:
-                history[v.tag].append(v.simple_value)
-    
-    return history
+    try:
+        # 查找事件文件
+        event_files = []
+        for root, dirs, files in os.walk(log_dir):
+            for file in files:
+                if file.startswith('events.out.tfevents'):
+                    event_files.append(os.path.join(root, file))
+        
+        if not event_files:
+            logging.error(f"No event files found in {log_dir}")
+            return None
+            
+        logging.info(f"Loading history from {event_files[0]}")
+        
+        # 加载事件文件
+        event_acc = EventAccumulator(event_files[0])
+        event_acc.Reload()
+        
+        # 读取标量数据
+        tags = event_acc.Tags()['scalars']
+        
+        if 'accuracy' in tags:
+            history['accuracy'] = [s.value for s in event_acc.Scalars('accuracy')]
+        if 'val_accuracy' in tags:
+            history['val_accuracy'] = [s.value for s in event_acc.Scalars('val_accuracy')]
+        if 'loss' in tags:
+            history['loss'] = [s.value for s in event_acc.Scalars('loss')]
+        if 'val_loss' in tags:
+            history['val_loss'] = [s.value for s in event_acc.Scalars('val_loss')]
+        
+        logging.info(f"Loaded history with {len(history['accuracy'])} epochs")
+        return history
+        
+    except Exception as e:
+        logging.error(f"Error loading training history: {e}")
+        return None
 
 def main():
     # 设置日志
@@ -30,7 +59,7 @@ def main():
         params = yaml.safe_load(f)
     
     # 加载最新的模型
-    model_path = 'checkpoints/two_stream_salient_best.h5'  # 根据实际路径修改
+    model_path = 'checkpoints/two_stream_salient_best.h5'
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model file not found: {model_path}")
     
@@ -38,7 +67,7 @@ def main():
     logging.info(f"Loaded model from {model_path}")
     
     # 加载数据
-    data_dir = 'data'  # 根据实际路径修改
+    data_dir = 'data'
     data_list, labels_list = load_npz_files(data_dir)
     
     # 准备数据
@@ -57,16 +86,30 @@ def main():
     
     # 加载并绘制训练历史
     logging.info("Loading training history...")
-    latest_log_dir = sorted(tf.io.gfile.glob('logs/tensorboard/*'))[-1]
-    history = load_training_history(latest_log_dir)
-    
-    logging.info("Generating training plots...")
-    draw_training_plot(
-        history=[history],
-        from_fold=0,
-        train_folds=1,
-        output_path='evaluation_results'
-    )
+    try:
+        log_dirs = tf.io.gfile.glob('logs/tensorboard/*')
+        if not log_dirs:
+            logging.error("No tensorboard logs found")
+            return
+            
+        latest_log_dir = sorted(log_dirs)[-1]
+        logging.info(f"Using latest log dir: {latest_log_dir}")
+        
+        history = load_training_history(latest_log_dir)
+        if history:
+            logging.info("Generating training plots...")
+            draw_training_plot(
+                history=[history],
+                from_fold=0,
+                train_folds=1,
+                output_path='evaluation_results'
+            )
+            logging.info("Training plots saved successfully")
+        else:
+            logging.error("Failed to load training history")
+            
+    except Exception as e:
+        logging.error(f"Error processing training history: {e}")
     
     # 打印评估结果摘要
     print("\nEvaluation Summary:")
