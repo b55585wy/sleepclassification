@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 import logging
 
 def f1_scores_from_cm(cm: np.ndarray) -> np.ndarray:

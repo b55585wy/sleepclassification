@@ -7,7 +7,17 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoa
 from load_files import load_npz_files
 from preprocess import prepare_data
 from model import TwoSteamSalientModelWrapper
-
+import argparse
+from tensorflow.keras import layers, models
+# TensorFlow 相关导入
+try:
+    import tensorflow as tf
+    from tensorflow.keras import layers, models
+    from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+    print(f"TensorFlow version: {tf.__version__}")
+except ImportError as e:
+    print(f"Error importing TensorFlow: {e}")
+    raise
 def setup_logging():
     """设置日志"""
     # 创建logs目录
@@ -157,7 +167,7 @@ def train(args):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Sleep Stage Classification Training')
-    parser.add_argument('--data_dir', type=str, default='data',
+    parser.add_argument('--data_dir', type=str, default='/root/autodl-fs/sleepedf/prepared',
                       help='数据目录路径')
     parser.add_argument('--config', type=str, default='hyperparameters.yaml',
                       help='配置文件路径')

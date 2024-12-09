@@ -75,7 +75,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         test_dir = sys.argv[1]
     else:
-        test_dir = "./sleepedf/prepared"
+        test_dir = "/root/autodl-fs/sleepedf/prepared"
     
     try:
         data, labels = load_npz_files(test_dir)

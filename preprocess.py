@@ -129,7 +129,7 @@ if __name__ == "__main__":
         params = yaml.safe_load(f)
     
     # 加载数据
-    data_list, labels_list = load_npz_files("./sleepedf/prepared")
+    data_list, labels_list = load_npz_files("/root/autodl-fs/sleepedf/prepared")
     
     # 准备数据
     (train_eeg, train_eog, train_labels), (val_eeg, val_eog, val_labels) = \
