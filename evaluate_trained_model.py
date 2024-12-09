@@ -31,7 +31,7 @@ def load_training_history(log_dir):
         event_acc = EventAccumulator(event_files[0])
         event_acc.Reload()
         
-        # 读取标量数据
+        # 读取标���数据
         tags = event_acc.Tags()['scalars']
         
         if 'accuracy' in tags:
@@ -49,6 +49,18 @@ def load_training_history(log_dir):
     except Exception as e:
         logging.error(f"Error loading training history: {e}")
         return None
+
+def draw_training_plot(history: list, from_fold: int, train_folds: int, output_path: str):
+    """修改绘图函数以处理空历史"""
+    if not history or not history[0]:
+        logging.error("No valid training history data to plot")
+        return
+        
+    if not all(key in history[0] for key in ['accuracy', 'val_accuracy', 'loss', 'val_loss']):
+        logging.error("Missing required metrics in training history")
+        return
+
+    # ... 其余绘图代码保持不变 ...
 
 def main():
     # 设置日志
@@ -96,7 +108,7 @@ def main():
         logging.info(f"Using latest log dir: {latest_log_dir}")
         
         history = load_training_history(latest_log_dir)
-        if history:
+        if history and any(len(v) > 0 for v in history.values()):
             logging.info("Generating training plots...")
             draw_training_plot(
                 history=[history],
@@ -106,17 +118,22 @@ def main():
             )
             logging.info("Training plots saved successfully")
         else:
-            logging.error("Failed to load training history")
+            logging.error("No valid training history data found")
+            # 继续执行评估部分，即使没有训练历史
             
     except Exception as e:
         logging.error(f"Error processing training history: {e}")
+        logging.info("Continuing with model evaluation...")
     
-    # 打印评估结果摘要
-    print("\nEvaluation Summary:")
-    print(f"Average F1 Score: {np.mean(eval_results['f1_scores']):.4f}")
-    print("\nPer-class F1 Scores:")
-    for i, class_name in enumerate(['W', 'N1', 'N2', 'N3', 'REM']):
-        print(f"{class_name}: {eval_results['f1_scores'][i]:.4f}")
+    # 确保评估结果输出
+    if eval_results:
+        print("\nEvaluation Summary:")
+        print(f"Average F1 Score: {np.mean(eval_results['f1_scores']):.4f}")
+        print("\nPer-class F1 Scores:")
+        for i, class_name in enumerate(['W', 'N1', 'N2', 'N3', 'REM']):
+            print(f"{class_name}: {eval_results['f1_scores'][i]:.4f}")
+    else:
+        logging.error("No evaluation results available")
 
 if __name__ == "__main__":
     main() 
