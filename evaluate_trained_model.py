@@ -79,7 +79,7 @@ def main():
     logging.info(f"Loaded model from {model_path}")
     
     # 加载数据
-    data_dir = 'data'
+    data_dir = '/root/autodl-fs/sleepedf/prepared'
     data_list, labels_list = load_npz_files(data_dir)
     
     # 准备数据
