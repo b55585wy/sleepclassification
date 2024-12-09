@@ -2,6 +2,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import logging
+from sklearn.metrics import confusion_matrix, classification_report
+import tensorflow as tf
 
 def f1_scores_from_cm(cm: np.ndarray) -> np.ndarray:
     """
@@ -149,3 +151,82 @@ def draw_training_plot(history: list, from_fold: int, train_folds: int, output_p
         logging.error(f"Error saving training plots to '{save_path}': {e}")
     finally:
         plt.close(fig)  # 关闭图形以释放内存
+
+def evaluate_model(model, test_data, test_labels, class_names=['W', 'N1', 'N2', 'N3', 'REM']):
+    """
+    评估模型性能
+    
+    Args:
+        model: 训练好的模型
+        test_data: 测试数据元组 (eeg_data, eog_data)
+        test_labels: 测试标签
+        class_names: 类别名称列表
+    """
+    # 模型预测
+    y_pred = model.predict(test_data)
+    y_pred_classes = np.argmax(y_pred, axis=1)
+    y_true_classes = np.argmax(test_labels, axis=1)
+    
+    # 计算混淆矩阵
+    cm = confusion_matrix(y_true_classes, y_pred_classes)
+    
+    # 计算每个类别的F1分数
+    f1_scores = f1_scores_from_cm(cm)
+    
+    # 打印评估结果
+    print("\n=== Model Evaluation ===")
+    print("\nConfusion Matrix:")
+    print(cm)
+    
+    print("\nClassification Report:")
+    print(classification_report(y_true_classes, y_pred_classes, 
+                              target_names=class_names))
+    
+    print("\nPer-class F1 Scores:")
+    for class_name, f1 in zip(class_names, f1_scores):
+        print(f"{class_name}: {f1:.4f}")
+    
+    # 绘制混淆矩阵
+    plot_confusion_matrix(cm, class_names, 
+                         normalize=True, 
+                         title='Normalized Confusion Matrix',
+                         path='evaluation_results')
+    
+    return {
+        'confusion_matrix': cm,
+        'f1_scores': f1_scores,
+        'predictions': y_pred_classes,
+        'true_labels': y_true_classes
+    }
+
+# 在train.py中添加评估代码
+def train(args):
+    # ... 现有的训练代码 ...
+    
+    # 训练完成后进行评估
+    print("\nEvaluating model on validation data...")
+    eval_results = evaluate_model(model, val_data, val_labels)
+    
+    # 保存评估结果
+    np.savez('evaluation_results/eval_metrics.npz',
+             confusion_matrix=eval_results['confusion_matrix'],
+             f1_scores=eval_results['f1_scores'],
+             predictions=eval_results['predictions'],
+             true_labels=eval_results['true_labels'])
+    
+    return train_history, eval_results
+
+def main():
+    args = parse_args()
+    try:
+        train_history, eval_results = train(args)
+        print("\nTraining and evaluation completed successfully!")
+        
+        # 打印总体性能指标
+        print(f"\nOverall Performance:")
+        print(f"Average F1 Score: {np.mean(eval_results['f1_scores']):.4f}")
+        print(f"Per-class F1 Scores: {eval_results['f1_scores']}")
+        
+    except Exception as e:
+        logging.error(f"Process failed: {str(e)}")
+        raise e
