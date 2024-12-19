@@ -95,6 +95,8 @@ def prepare_data(data_list: List[np.ndarray], labels_list: List[np.ndarray],
     print(f"Labels: {labels.shape}")
     
     # 分割训练集和验证集
+
+    # 80% 用于训练，20% 用于验证
     split_idx = int(len(eeg_data) * 0.8)
     
     return (eeg_data[:split_idx], eog_data[:split_idx], labels[:split_idx]), \
