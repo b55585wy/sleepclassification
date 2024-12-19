@@ -23,7 +23,8 @@ def create_sequences(data: np.ndarray, labels: np.ndarray,
     # 创建序列，保持正确的维度 (n_samples, sequence_length, 3000, 1)
     sequences = np.zeros((n_samples, sequence_length, data.shape[1], data.shape[2]), dtype=np.float32)
     
-    # 滑动窗口创建序列
+       
+    # 问题5: 滑动窗口可能跨越不同的睡眠阶段
     for i in range(n_samples):
         sequences[i] = data[i:i + sequence_length]
     
@@ -50,7 +51,9 @@ def prepare_data(data_list: List[np.ndarray], labels_list: List[np.ndarray],
         print("Running in test mode - processing only first 3 files")
         data_list = data_list[:3]
         labels_list = labels_list[:3]
-    
+
+
+        # 问题1: 直接遍历所有文件，没有考虑受试者的独立性
     for idx, (data, labels) in enumerate(zip(data_list, labels_list)):
         try:
             print(f"\nProcessing file {idx}")
@@ -74,6 +77,9 @@ def prepare_data(data_list: List[np.ndarray], labels_list: List[np.ndarray],
             print(f"Created sequences - EEG shape: {eeg_sequences.shape}")
             print(f"Labels shape: {sequence_labels.shape}")
             
+                        
+            # 问题2: 将所有文件的序列简单地追加到一个列表中
+            # 这样会导致同一个受试者的数据被分散到不同的集合中
             all_sequences.append((eeg_sequences, eog_sequences))
             all_labels.append(sequence_labels)
             
@@ -85,6 +91,7 @@ def prepare_data(data_list: List[np.ndarray], labels_list: List[np.ndarray],
         raise ValueError("No sequences were created!")
     
     # 合并数据
+        # 问题3: 直接合并所有序列，打乱了受试者的数据完整性
     eeg_data = np.concatenate([seq[0] for seq in all_sequences])
     eog_data = np.concatenate([seq[1] for seq in all_sequences])
     labels = np.concatenate(all_labels)
@@ -97,6 +104,8 @@ def prepare_data(data_list: List[np.ndarray], labels_list: List[np.ndarray],
     # 分割训练集和验证集
 
     # 80% 用于训练，20% 用于验证
+     # 问题4: 简单地按比例划分数据
+    # 这种划分方式会导致同一个受试者的数据同时出现在训练集和验证集中
     split_idx = int(len(eeg_data) * 0.8)
     
     return (eeg_data[:split_idx], eog_data[:split_idx], labels[:split_idx]), \
