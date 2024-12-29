@@ -167,9 +167,9 @@ def train(args):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Sleep Stage Classification Training')
-    parser.add_argument('--data_dir', type=str, default='/root/autodl-fs/sleepedf/prepared',
+    parser.add_argument('--data_dir', type=str, default='./sleepedf/prepared',
                       help='数据目录路径')
-    parser.add_argument('--config', type=str, default='hyperparameters.yaml',
+    parser.add_argument('--config', type=str, default='./hyperparameters.yaml',
                       help='配置文件路径')
     parser.add_argument('--test_mode', action='store_true',
                       help='是否使用测试模式')
