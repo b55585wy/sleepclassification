@@ -8,3 +8,15 @@
 logs/
 .DS_Store
 .history/
+*.npy
+*.npz
+*.pkl
+*.joblib
+*.tar
+*.zip
+*.pickle
+*.joblib
+*.joblib
+*.joblib
+*.joblib
+
